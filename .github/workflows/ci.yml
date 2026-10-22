@@ -20,6 +20,7 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Unit and API tests (offline, no API keys)
         run: |
+          set -o pipefail
           pytest -q | tee pytest.out
           echo "::notice title=python tests::$(tail -1 pytest.out)"
       - name: RAG evaluation on the golden set
