@@ -1,0 +1,13 @@
+{"question": "What is the specialist copay?", "source": "plan_overview.md", "must_contain": ["$50"]}
+{"question": "What is the in-network deductible for an individual?", "source": "plan_overview.md", "must_contain": ["$1,500"]}
+{"question": "What is the out-of-pocket maximum for a family?", "source": "plan_overview.md", "must_contain": ["$10,000"]}
+{"question": "Is my annual physical covered?", "source": "plan_overview.md", "must_contain": ["100%"]}
+{"question": "Do I need prior authorization for an MRI?", "source": "prior_authorization.md", "must_contain": ["MRI"]}
+{"question": "How long does an expedited prior authorization take?", "source": "prior_authorization.md", "must_contain": ["72 hours"]}
+{"question": "What does a Tier 2 drug cost?", "source": "pharmacy_formulary.md", "must_contain": ["$40"]}
+{"question": "What is step therapy?", "source": "pharmacy_formulary.md", "must_contain": ["lower-tier"]}
+{"question": "When is a formulary exception decided?", "source": "pharmacy_formulary.md", "must_contain": ["72 hours"]}
+{"question": "How long do I have to file an appeal?", "source": "claims_appeals.md", "must_contain": ["180 days"]}
+{"question": "What is an external review?", "source": "claims_appeals.md", "must_contain": ["independent review"]}
+{"question": "What is the ER copay?", "source": "plan_overview.md", "must_contain": ["$350"]}
+{"question": "What is the weather on Mars?", "source": null, "must_contain": ["don't know"]}

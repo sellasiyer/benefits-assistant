@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benefits Assistant · GenAI RAG reference app</title>
+<meta name="description" content="A GenAI RAG app built with FastAPI, LangChain, LangGraph, Chroma and React/TypeScript, with PHI redaction, tool calling, streaming and evaluation. By Sella Iyer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f8fa;--panel:#fff;--ink:#141a26;--muted:#5d6678;--line:#e3e7ee;
+  --accent:#1f6feb;--accent-soft:#e7effd;--ok:#127a3f;--ok-soft:#e3f5ea;--warn:#a64b00;--warn-soft:#fdf0dc;
+  --code:#0f1420;--code-ink:#dfe6f3;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0d1016;--panel:#151a23;--ink:#e7ebf2;--muted:#9aa4b6;--line:#262d3a;
+  --accent:#5b9dff;--accent-soft:#17243b;--ok:#4cc38a;--ok-soft:#10291c;--warn:#f5a524;--warn-soft:#2e2108;
+  --code:#0a0d13;--code-ink:#dfe6f3;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif}
+a{color:var(--accent)}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+header.hero{padding:56px 0 32px;border-bottom:1px solid var(--line)}
+.eyebrow{font:500 13px/1 "JetBrains Mono",monospace;color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
+h1{font-size:clamp(30px,5vw,46px);line-height:1.1;margin:14px 0 14px;letter-spacing:-.02em}
+.lede{font-size:clamp(16px,2.2vw,19px);color:var(--muted);max-width:720px;margin:0}
+.cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;font-weight:600;text-decoration:none;font-size:15px}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.ghost{border:1px solid var(--line);color:var(--ink);background:var(--panel)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:22px}
+.chip{font:500 12px/1 "JetBrains Mono",monospace;padding:6px 9px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--muted)}
+section{padding:44px 0;border-bottom:1px solid var(--line)}
+h2{font-size:26px;margin:0 0 8px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 24px;max-width:740px}
+.shot{border-radius:14px;border:1px solid var(--line);overflow:hidden;background:var(--panel);box-shadow:0 10px 30px -12px rgba(15,25,45,.25)}
+.shot img{display:block;width:100%;height:auto}
+.grid{display:grid;gap:16px}
+.g3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h3{margin:0 0 6px;font-size:16px}
+.card p{margin:0;color:var(--muted);font-size:14.5px}
+.k{font:500 12px "JetBrains Mono",monospace;color:var(--accent)}
+.diagram{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;overflow-x:auto}
+.diagram svg{display:block;min-width:720px;width:100%;height:auto}
+.diagram text{font-family:Inter,sans-serif;fill:var(--ink)}
+.diagram .small{font-size:11px;fill:var(--muted)}
+.diagram .box{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+.diagram .hl{fill:var(--accent-soft);stroke:var(--accent)}
+.diagram .warnbox{fill:var(--warn-soft);stroke:var(--warn)}
+.diagram .okbox{fill:var(--ok-soft);stroke:var(--ok)}
+.diagram .edge{stroke:var(--muted);stroke-width:1.5;fill:none;marker-end:url(#arrow)}
+.diagram #arrow path{fill:var(--muted)}
+ol.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:10px}
+ol.steps li{counter-increment:s;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px 14px 56px;position:relative}
+ol.steps li::before{content:counter(s);position:absolute;left:16px;top:14px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center}
+ol.steps b{display:block}
+ol.steps span{color:var(--muted);font-size:14.5px}
+code,.mono{font-family:"JetBrains Mono",monospace;font-size:.9em}
+pre{background:var(--code);color:var(--code-ink);padding:16px;border-radius:12px;overflow-x:auto;font:13px/1.55 "JetBrains Mono",monospace;margin:0}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:none}
+.tablewrap{overflow-x:auto}
+.metric{font-size:34px;font-weight:700;letter-spacing:-.02em}
+.metric small{font-size:15px;color:var(--muted);font-weight:500}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:6px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.callout{border-left:3px solid var(--warn);background:var(--warn-soft);padding:12px 16px;border-radius:0 10px 10px 0;font-size:14.5px}
+footer{padding:32px 0 48px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">GenAI · RAG · Agents · Full stack</div>
+    <h1>Benefits Assistant</h1>
+    <p class="lede">A health-plan chatbot that answers member questions from policy documents, with citations. It's built as a production-shaped reference: a LangGraph agent, a vector database, tool calling, PHI redaction, token streaming and an evaluation suite, with any LLM provider behind one interface.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/sellasiyer/benefits-assistant">View the code on GitHub</a>
+      <a class="btn ghost" href="https://github.com/sellasiyer/benefits-assistant#3-walkthrough-file-by-file">Read the walkthrough</a>
+    </div>
+    <div class="chips">
+      <span class="chip">Python</span><span class="chip">FastAPI</span><span class="chip">LangChain</span><span class="chip">LangGraph</span>
+      <span class="chip">Chroma</span><span class="chip">OpenAI</span><span class="chip">Azure OpenAI</span><span class="chip">Anthropic</span>
+      <span class="chip">AWS Bedrock</span><span class="chip">React</span><span class="chip">TypeScript</span><span class="chip">SSE streaming</span>
+      <span class="chip">pytest</span><span class="chip">Docker</span><span class="chip">GitHub Actions</span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>What it looks like</h2>
+    <p class="sub">Answers stream in token by token. Each answer shows its route, expandable source citations with relevance scores, and the agent's step-by-step trace. Personal identifiers are redacted before the model ever sees them.</p>
+    <div class="shot"><img src="assets/ui-chat.png" alt="Benefits Assistant chat UI answering three questions: a cited prior-authorization answer, a cost estimate from the calculator tool, and an emergency room copay answer with the member ID redacted" loading="lazy"></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What it does</h2>
+    <p class="sub">The plan is fictional ("North Star Gold PPO"), but the problems are the real ones in regulated GenAI.</p>
+    <div class="grid g3">
+      <div class="card"><div class="k">RAG</div><h3>Grounded, cited answers</h3><p>Policy docs are split by section, embedded and stored in Chroma. Answers come only from retrieved chunks and cite them as [1], [2].</p></div>
+      <div class="card"><div class="k">Hallucination control</div><h3>Says "I don't know"</h3><p>A grading step drops weak matches. If nothing relevant remains, the model isn't asked to guess.</p></div>
+      <div class="card"><div class="k">Tool calling</div><h3>Math in code, not in the LLM</h3><p>Cost questions route to a LangChain tool that applies the deductible, coinsurance and out-of-pocket cap exactly.</p></div>
+      <div class="card"><div class="k">HIPAA-style guardrails</div><h3>PHI redaction</h3><p>SSNs, member IDs, birth dates, phones and emails are masked before retrieval, the LLM and the audit log.</p></div>
+      <div class="card"><div class="k">Security</div><h3>Prompt-injection screen</h3><p>"Ignore previous instructions" style input is blocked, and retrieved text is treated as data, never as instructions.</p></div>
+      <div class="card"><div class="k">Provider-agnostic</div><h3>Any LLM, one env var</h3><p>OpenAI, Azure OpenAI, Anthropic or Bedrock behind LangChain's interfaces. An offline mode runs with no API keys.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Architecture</h2>
+    <p class="sub">A LangGraph state machine. Each step is a node you can test and trace on its own, and routing is explicit.</p>
+    <div class="diagram">
+      <svg viewBox="0 0 960 330" role="img" aria-label="Agent graph: guard, router, then either the calculator tool or retrieve, grade and generate">
+        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+        <rect class="box" x="10" y="135" width="120" height="56" rx="10"/>
+        <text x="70" y="160" text-anchor="middle" font-weight="600" font-size="14">React UI</text>
+        <text x="70" y="178" text-anchor="middle" class="small">TypeScript · SSE</text>
+        <rect class="box" x="170" y="135" width="110" height="56" rx="10"/>
+        <text x="225" y="160" text-anchor="middle" font-weight="600" font-size="14">FastAPI</text>
+        <text x="225" y="178" text-anchor="middle" class="small">/chat/stream</text>
+        <path class="edge" d="M130 163 H166"/>
+        <rect class="warnbox" x="320" y="135" width="110" height="56" rx="10"/>
+        <text x="375" y="160" text-anchor="middle" font-weight="600" font-size="14">guard</text>
+        <text x="375" y="178" text-anchor="middle" class="small">PHI · injection</text>
+        <path class="edge" d="M280 163 H316"/>
+        <rect class="box" x="470" y="135" width="110" height="56" rx="10"/>
+        <text x="525" y="160" text-anchor="middle" font-weight="600" font-size="14">router</text>
+        <text x="525" y="178" text-anchor="middle" class="small">structured output</text>
+        <path class="edge" d="M430 163 H466"/>
+        <rect class="box" x="320" y="250" width="110" height="46" rx="10"/>
+        <text x="375" y="278" text-anchor="middle" font-size="13">blocked → END</text>
+        <path class="edge" d="M375 191 V246"/>
+        <rect class="okbox" x="630" y="40" width="150" height="56" rx="10"/>
+        <text x="705" y="65" text-anchor="middle" font-weight="600" font-size="14">calculator</text>
+        <text x="705" y="83" text-anchor="middle" class="small">LangChain @tool</text>
+        <path class="edge" d="M580 150 C605 120 605 80 626 70"/>
+        <rect class="hl" x="630" y="135" width="110" height="56" rx="10"/>
+        <text x="685" y="160" text-anchor="middle" font-weight="600" font-size="14">retrieve</text>
+        <text x="685" y="178" text-anchor="middle" class="small">Chroma top-k</text>
+        <path class="edge" d="M580 163 H626"/>
+        <rect class="hl" x="780" y="135" width="80" height="56" rx="10"/>
+        <text x="820" y="168" text-anchor="middle" font-weight="600" font-size="14">grade</text>
+        <path class="edge" d="M740 163 H776"/>
+        <rect class="hl" x="830" y="40" width="120" height="56" rx="10"/>
+        <text x="890" y="65" text-anchor="middle" font-weight="600" font-size="14">generate</text>
+        <text x="890" y="83" text-anchor="middle" class="small">LLM · streams</text>
+        <path class="edge" d="M840 135 C850 115 870 110 878 100"/>
+        <rect class="box" x="830" y="250" width="120" height="46" rx="10"/>
+        <text x="890" y="278" text-anchor="middle" font-size="13">no_answer</text>
+        <path class="edge" d="M840 191 C855 215 875 225 885 246"/>
+        <text x="610" y="118" class="small">$ amount + cost question</text>
+        <text x="874" y="222" class="small">nothing relevant</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>One request, end to end</h2>
+    <p class="sub">"Member ABC12345678 here: what is the emergency room copay?"</p>
+    <ol class="steps">
+      <li><b>React posts to <code>/chat/stream</code></b><span>The browser's EventSource only supports GET, so the client reads the fetch body stream and parses SSE frames itself.</span></li>
+      <li><b>FastAPI validates and starts the graph</b><span>Pydantic models validate input and generate the OpenAPI docs.</span></li>
+      <li><b>guard redacts PHI</b><span>The member ID becomes <code>[MEMBER_ID]</code> before it reaches the LLM, the vector store or the logs.</span></li>
+      <li><b>router picks a path</b><span>With a real model it returns a Pydantic <code>RouteDecision</code> via structured output; here it routes to RAG.</span></li>
+      <li><b>retrieve and grade</b><span>Top-4 chunks from Chroma (cosine, HNSW); weak matches are dropped.</span></li>
+      <li><b>generate streams a cited answer</b><span>"An emergency room visit has a $350 copay, which is waived if the member is admitted to the hospital. [1]"</span></li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Measured, not assumed</h2>
+    <p class="sub">A golden question set runs in CI on every push, so a change in chunking, prompts or models shows up as a number.</p>
+    <div class="grid g3" style="margin-bottom:16px">
+      <div class="card"><div class="metric">12 <small>/ 12</small></div><p>API, guardrail, tool, routing and streaming tests passing</p></div>
+      <div class="card"><div class="metric">100% <small>hit@4</small></div><p>Expected source document retrieved for every golden question</p></div>
+      <div class="card"><div class="metric">12 <small>/ 13</small></div><p>Answers containing the expected fact (offline mode)</p></div>
+    </div>
+    <div class="callout"><b>The one miss is deliberate.</b> "What is the ER copay?" fails offline because keyword-style embeddings don't know ER means emergency room. The eval catches it; semantic embeddings or hybrid search fix it. That's the point of keeping an eval set.</div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Requirement → implementation</h2>
+    <p class="sub">Where each piece of a typical AI/ML full-stack job description lives in the code.</p>
+    <div class="tablewrap"><table>
+      <tr><th>Capability</th><th>Implementation</th><th>File</th></tr>
+      <tr><td>REST APIs / microservices in Python</td><td>FastAPI, Pydantic, SSE streaming, file upload</td><td class="mono">backend/app/main.py</td></tr>
+      <tr><td>LangChain</td><td>Documents, splitters, prompts, tools, model interfaces</td><td class="mono">vectorstore.py · providers.py</td></tr>
+      <tr><td>LangGraph</td><td>Typed state with reducers, conditional edges, tool node</td><td class="mono">backend/app/agent.py</td></tr>
+      <tr><td>OpenAI / Azure OpenAI / Anthropic / Bedrock</td><td>Provider factory selected by environment variable</td><td class="mono">backend/app/providers.py</td></tr>
+      <tr><td>RAG, vector DB, embeddings</td><td>Section-aware chunking, Chroma, idempotent re-ingest</td><td class="mono">backend/app/vectorstore.py</td></tr>
+      <tr><td>Guardrails / compliance</td><td>PHI redaction, injection screen, redacted audit log</td><td class="mono">backend/app/guardrails.py</td></tr>
+      <tr><td>React, TypeScript</td><td>Streaming chat, citations, trace, upload, abort</td><td class="mono">frontend/src/</td></tr>
+      <tr><td>Testing & evaluation</td><td>pytest suite, golden-set eval, GitHub Actions CI</td><td class="mono">backend/tests · backend/eval</td></tr>
+      <tr><td>Deployment</td><td>Dockerfile, docker-compose with persisted index</td><td class="mono">Dockerfile · docker-compose.yml</td></tr>
+    </table></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="grid g2">
+      <div>
+        <h2>Run it locally</h2>
+        <p class="sub">No API keys needed. Switch to a real provider in <code>backend/.env</code>.</p>
+<pre># backend
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload
+
+# frontend (second terminal)
+cd frontend && npm install && npm run dev
+# open http://localhost:5173</pre>
+      </div>
+      <div>
+        <h2>Same pattern in Java</h2>
+        <p class="sub">With Spring AI, for teams whose services are Spring Boot.</p>
+<pre>String ask(String question) {
+  return chat.prompt()
+    .user(question)
+    .advisors(new QuestionAnswerAdvisor(store,
+        SearchRequest.builder()
+          .topK(4).similarityThreshold(0.5).build()))
+    .tools(new CostCalculatorTools())
+    .call()
+    .content();
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Built by <a href="https://www.linkedin.com/in/sella-iyer">Sella Iyer</a> · <a href="https://github.com/sellasiyer">github.com/sellasiyer</a> · The health plan and its policies are fictional, for demonstration only.
+  </div>
+</footer>
+</body>
+</html>

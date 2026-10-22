@@ -1,0 +1,12 @@
+{
+  "plan": "North Star Gold PPO 2026 (fictional)",
+  "copays": {
+    "primary_care": 25,
+    "specialist": 50,
+    "urgent_care": 75,
+    "emergency_room": 350
+  },
+  "deductible_individual": 1500,
+  "coinsurance_in_network": 0.20,
+  "oop_max_individual": 5000
+}

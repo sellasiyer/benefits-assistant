@@ -1,0 +1,8 @@
+services:
+  api:
+    build: ./backend
+    env_file: ./backend/.env   # copy .env.example to .env first
+    ports: ["8000:8000"]
+    volumes: ["chroma:/app/data/chroma"]   # persist the vector index across restarts
+volumes:
+  chroma:
