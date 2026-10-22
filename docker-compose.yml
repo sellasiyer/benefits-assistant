@@ -1,8 +1,27 @@
+# docker compose up --build
+#   :8000  Python AI service (FastAPI + LangGraph)
+#   :8080  Spring Boot gateway -> Python AI service
+#   :8081  Java Spring AI service (standalone RAG agent)
 services:
   api:
     build: ./backend
     env_file: ./backend/.env   # copy .env.example to .env first
     ports: ["8000:8000"]
     volumes: ["chroma:/app/data/chroma"]   # persist the vector index across restarts
+
+  gateway:
+    build: ./java-gateway
+    environment:
+      AI_SERVICE_URL: http://api:8000
+    ports: ["8080:8080"]
+    depends_on: [api]
+
+  spring-ai:
+    build: ./java-spring-ai
+    environment:
+      LLM_PROVIDER: offline
+      EMBEDDING_PROVIDER: offline
+    ports: ["8081:8081"]
+
 volumes:
   chroma:

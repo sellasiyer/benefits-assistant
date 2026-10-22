@@ -1,0 +1,50 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: benefits-gateway
+  threads:
+    virtual:
+      enabled: true   # Java 21 virtual threads for request handling
+  servlet:
+    multipart:
+      max-file-size: 2MB
+
+ai-service:
+  base-url: ${AI_SERVICE_URL:http://localhost:8000}
+  connect-timeout: 2s
+  read-timeout: 30s
+
+resilience4j:
+  retry:
+    instances:
+      aiService:
+        max-attempts: 3
+        wait-duration: 200ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+  circuitbreaker:
+    instances:
+      aiService:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers
+  health:
+    circuitbreakers:
+      enabled: true
+
+logging:
+  pattern:
+    level: "%5p [rid=%X{requestId:-}]"

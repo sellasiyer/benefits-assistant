@@ -83,10 +83,11 @@ export default function App() {
       <header>
         <div>
           <h1>Benefits Assistant</h1>
-          <p className="sub">RAG over plan documents · LangGraph agent · FastAPI · React</p>
+          <p className="sub">RAG over plan documents · Python (LangGraph) or Java (Spring AI) · React</p>
         </div>
         {health && (
           <div className="badges">
+            {health.backend && <span className="badge">Backend: {health.backend}</span>}
             <span className="badge">LLM: {health.llm}</span>
             <span className="badge">Embeddings: {health.embeddings}</span>
             <span className="badge">{health.chunks} chunks</span>

@@ -1,0 +1,25 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: benefits-spring-ai
+  threads:
+    virtual:
+      enabled: true
+  servlet:
+    multipart:
+      max-file-size: 2MB
+
+app:
+  llm-provider: ${LLM_PROVIDER:offline}          # offline | openai | azure | anthropic
+  embedding-provider: ${EMBEDDING_PROVIDER:offline}
+  top-k: 4
+  min-relevance: 0.15     # tuned for the offline embeddings; real models need their own value (see eval)
+  chunk-size: 400
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

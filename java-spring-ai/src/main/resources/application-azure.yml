@@ -1,0 +1,20 @@
+# Run with:  mvn spring-boot:run -Pazure -Dspring-boot.run.profiles=azure
+# Needs AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT and two deployments in your Azure OpenAI resource.
+app:
+  llm-provider: azure
+  embedding-provider: azure
+  min-relevance: 0.30
+
+spring:
+  ai:
+    azure:
+      openai:
+        api-key: ${AZURE_OPENAI_API_KEY}
+        endpoint: ${AZURE_OPENAI_ENDPOINT}
+        chat:
+          options:
+            deployment-name: ${AZURE_CHAT_DEPLOYMENT:gpt-4o-mini}
+            temperature: 0
+        embedding:
+          options:
+            deployment-name: ${AZURE_EMBEDDING_DEPLOYMENT:text-embedding-3-small}

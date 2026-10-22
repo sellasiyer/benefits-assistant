@@ -1,0 +1,14 @@
+# Run with:  mvn spring-boot:run -Panthropic -Dspring-boot.run.profiles=anthropic   (needs ANTHROPIC_API_KEY)
+# Anthropic has no embeddings API, so embeddings stay offline here (or combine with -Popenai for OpenAI embeddings).
+app:
+  llm-provider: anthropic
+  embedding-provider: offline
+
+spring:
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY}
+      chat:
+        options:
+          model: claude-sonnet-4-5
+          temperature: 0

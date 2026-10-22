@@ -13,6 +13,7 @@ export interface Health {
   llm: string;
   embeddings: string;
   chunks: number;
+  backend?: string;
 }
 
 export interface StreamHandlers {

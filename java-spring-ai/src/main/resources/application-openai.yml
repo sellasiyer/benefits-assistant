@@ -1,0 +1,17 @@
+# Run with:  mvn spring-boot:run -Popenai -Dspring-boot.run.profiles=openai   (needs OPENAI_API_KEY)
+app:
+  llm-provider: openai
+  embedding-provider: openai
+  min-relevance: 0.30     # semantic embeddings score on a different scale; tune with the golden set
+
+spring:
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0
+      embedding:
+        options:
+          model: text-embedding-3-small

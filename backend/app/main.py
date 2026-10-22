@@ -68,7 +68,7 @@ def _citations(state: dict) -> list[dict]:
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "llm": settings.llm_provider, "embeddings": settings.embedding_provider, "chunks": doc_count()}
+    return {"status": "ok", "backend": "python-fastapi", "llm": settings.llm_provider, "embeddings": settings.embedding_provider, "chunks": doc_count()}
 
 
 @app.post("/ingest")
