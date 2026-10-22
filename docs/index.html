@@ -81,16 +81,16 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:14px}
   <div class="wrap">
     <div class="eyebrow">GenAI · RAG · Agents · Full stack</div>
     <h1>Benefits Assistant</h1>
-    <p class="lede">A health-plan chatbot that answers member questions from policy documents, with citations. It's built as a production-shaped reference: a LangGraph agent, a vector database, tool calling, PHI redaction, token streaming and an evaluation suite, with any LLM provider behind one interface.</p>
+    <p class="lede">A health-plan chatbot that answers member questions from policy documents, with citations. Built three ways behind one API contract: a <b>Python</b> AI service (FastAPI + LangGraph), a <b>Spring Boot</b> gateway in front of it, and the same agent natively in <b>Spring AI</b>. Vector search, tool calling, PHI redaction, token streaming and evaluation, with any LLM provider behind one interface.</p>
     <div class="cta">
       <a class="btn primary" href="https://github.com/sellasiyer/benefits-assistant">View the code on GitHub</a>
       <a class="btn ghost" href="https://github.com/sellasiyer/benefits-assistant#3-walkthrough-file-by-file">Read the walkthrough</a>
     </div>
     <div class="chips">
-      <span class="chip">Python</span><span class="chip">FastAPI</span><span class="chip">LangChain</span><span class="chip">LangGraph</span>
+      <span class="chip">Java 21</span><span class="chip">Spring Boot</span><span class="chip">Spring AI</span><span class="chip">Resilience4j</span><span class="chip">Python</span><span class="chip">FastAPI</span><span class="chip">LangChain</span><span class="chip">LangGraph</span>
       <span class="chip">Chroma</span><span class="chip">OpenAI</span><span class="chip">Azure OpenAI</span><span class="chip">Anthropic</span>
       <span class="chip">AWS Bedrock</span><span class="chip">React</span><span class="chip">TypeScript</span><span class="chip">SSE streaming</span>
-      <span class="chip">pytest</span><span class="chip">Docker</span><span class="chip">GitHub Actions</span>
+      <span class="chip">JUnit 5</span><span class="chip">pytest</span><span class="chip">Docker</span><span class="chip">GitHub Actions</span>
     </div>
   </div>
 </header>
@@ -113,6 +113,8 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:14px}
       <div class="card"><div class="k">Tool calling</div><h3>Math in code, not in the LLM</h3><p>Cost questions route to a LangChain tool that applies the deductible, coinsurance and out-of-pocket cap exactly.</p></div>
       <div class="card"><div class="k">HIPAA-style guardrails</div><h3>PHI redaction</h3><p>SSNs, member IDs, birth dates, phones and emails are masked before retrieval, the LLM and the audit log.</p></div>
       <div class="card"><div class="k">Security</div><h3>Prompt-injection screen</h3><p>"Ignore previous instructions" style input is blocked, and retrieved text is treated as data, never as instructions.</p></div>
+      <div class="card"><div class="k">Java + Python</div><h3>Same agent, two ecosystems</h3><p>The Python LangGraph agent and the Spring AI agent take the same steps and give the same answers on the golden set. A Spring Boot gateway can also front the Python service.</p></div>
+      <div class="card"><div class="k">Resilience</div><h3>Built for a flaky dependency</h3><p>The gateway adds timeouts, Resilience4j retry with backoff, a circuit breaker that fails fast with a clear 503, and request-id tracing across services.</p></div>
       <div class="card"><div class="k">Provider-agnostic</div><h3>Any LLM, one env var</h3><p>OpenAI, Azure OpenAI, Anthropic or Bedrock behind LangChain's interfaces. An offline mode runs with no API keys.</p></div>
     </div>
   </div>
@@ -120,8 +122,20 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:14px}
 
 <section>
   <div class="wrap">
+    <h2>Three backends, one contract</h2>
+    <p class="sub">All three expose <code>/health</code>, <code>/chat</code>, <code>/chat/stream</code> and <code>/documents</code> with identical JSON and SSE events, so the React UI runs against any of them with one environment variable.</p>
+    <div class="grid g3">
+      <div class="card"><div class="k">:8000 · backend/</div><h3>Python AI service</h3><p>FastAPI, LangChain, LangGraph state machine, Chroma vector DB. Providers: OpenAI, Azure OpenAI, Anthropic, Bedrock.</p></div>
+      <div class="card"><div class="k">:8080 · java-gateway/</div><h3>Spring Boot gateway</h3><p>Java owns the public API: Bean Validation, RestClient with timeouts, Resilience4j retry and circuit breaker, SSE relay on virtual threads, PHI-safe audit logs.</p></div>
+      <div class="card"><div class="k">:8081 · java-spring-ai/</div><h3>Spring AI service</h3><p>The whole agent in Java: ChatClient, EmbeddingModel, VectorStore, <code>@Tool</code> calculator, structured-output routing, streaming with Flux.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
     <h2>Architecture</h2>
-    <p class="sub">A LangGraph state machine. Each step is a node you can test and trace on its own, and routing is explicit.</p>
+    <p class="sub">The agent steps, identical in the Python LangGraph graph and the Spring AI service. Each step can be tested and traced on its own, and routing is explicit. The gateway, when used, sits between the UI and the Python service.</p>
     <div class="diagram">
       <svg viewBox="0 0 960 330" role="img" aria-label="Agent graph: guard, router, then either the calculator tool or retrieve, grade and generate">
         <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
@@ -129,8 +143,8 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:14px}
         <text x="70" y="160" text-anchor="middle" font-weight="600" font-size="14">React UI</text>
         <text x="70" y="178" text-anchor="middle" class="small">TypeScript · SSE</text>
         <rect class="box" x="170" y="135" width="110" height="56" rx="10"/>
-        <text x="225" y="160" text-anchor="middle" font-weight="600" font-size="14">FastAPI</text>
-        <text x="225" y="178" text-anchor="middle" class="small">/chat/stream</text>
+        <text x="225" y="160" text-anchor="middle" font-weight="600" font-size="14">API layer</text>
+        <text x="225" y="178" text-anchor="middle" class="small">FastAPI · Spring</text>
         <path class="edge" d="M130 163 H166"/>
         <rect class="warnbox" x="320" y="135" width="110" height="56" rx="10"/>
         <text x="375" y="160" text-anchor="middle" font-weight="600" font-size="14">guard</text>
@@ -145,11 +159,11 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:14px}
         <path class="edge" d="M375 191 V246"/>
         <rect class="okbox" x="630" y="40" width="150" height="56" rx="10"/>
         <text x="705" y="65" text-anchor="middle" font-weight="600" font-size="14">calculator</text>
-        <text x="705" y="83" text-anchor="middle" class="small">LangChain @tool</text>
+        <text x="705" y="83" text-anchor="middle" class="small">@tool · @Tool</text>
         <path class="edge" d="M580 150 C605 120 605 80 626 70"/>
         <rect class="hl" x="630" y="135" width="110" height="56" rx="10"/>
         <text x="685" y="160" text-anchor="middle" font-weight="600" font-size="14">retrieve</text>
-        <text x="685" y="178" text-anchor="middle" class="small">Chroma top-k</text>
+        <text x="685" y="178" text-anchor="middle" class="small">vector top-k</text>
         <path class="edge" d="M580 163 H626"/>
         <rect class="hl" x="780" y="135" width="80" height="56" rx="10"/>
         <text x="820" y="168" text-anchor="middle" font-weight="600" font-size="14">grade</text>
@@ -186,9 +200,9 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:14px}
 <section>
   <div class="wrap">
     <h2>Measured, not assumed</h2>
-    <p class="sub">A golden question set runs in CI on every push, so a change in chunking, prompts or models shows up as a number.</p>
+    <p class="sub">Every push runs all four CI jobs: Python tests and the golden-set eval, both Java modules, and the TypeScript build. A change in chunking, prompts or models shows up as a number.</p>
     <div class="grid g3" style="margin-bottom:16px">
-      <div class="card"><div class="metric">12 <small>/ 12</small></div><p>API, guardrail, tool, routing and streaming tests passing</p></div>
+      <div class="card"><div class="metric">39 <small>tests</small></div><p>pytest (12) and JUnit 5 (27) across the three backends, all green in CI</p></div>
       <div class="card"><div class="metric">100% <small>hit@4</small></div><p>Expected source document retrieved for every golden question</p></div>
       <div class="card"><div class="metric">12 <small>/ 13</small></div><p>Answers containing the expected fact (offline mode)</p></div>
     </div>
@@ -202,6 +216,8 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:14px}
     <p class="sub">Where each piece of a typical AI/ML full-stack job description lives in the code.</p>
     <div class="tablewrap"><table>
       <tr><th>Capability</th><th>Implementation</th><th>File</th></tr>
+      <tr><td>Java / Spring Boot microservices</td><td>Gateway with validation, RestClient, Resilience4j, SSE relay, Actuator</td><td class="mono">java-gateway/</td></tr>
+      <tr><td>Spring AI</td><td>ChatClient, EmbeddingModel, VectorStore, @Tool, structured output, Flux streaming</td><td class="mono">java-spring-ai/</td></tr>
       <tr><td>REST APIs / microservices in Python</td><td>FastAPI, Pydantic, SSE streaming, file upload</td><td class="mono">backend/app/main.py</td></tr>
       <tr><td>LangChain</td><td>Documents, splitters, prompts, tools, model interfaces</td><td class="mono">vectorstore.py · providers.py</td></tr>
       <tr><td>LangGraph</td><td>Typed state with reducers, conditional edges, tool node</td><td class="mono">backend/app/agent.py</td></tr>
@@ -209,8 +225,8 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:14px}
       <tr><td>RAG, vector DB, embeddings</td><td>Section-aware chunking, Chroma, idempotent re-ingest</td><td class="mono">backend/app/vectorstore.py</td></tr>
       <tr><td>Guardrails / compliance</td><td>PHI redaction, injection screen, redacted audit log</td><td class="mono">backend/app/guardrails.py</td></tr>
       <tr><td>React, TypeScript</td><td>Streaming chat, citations, trace, upload, abort</td><td class="mono">frontend/src/</td></tr>
-      <tr><td>Testing & evaluation</td><td>pytest suite, golden-set eval, GitHub Actions CI</td><td class="mono">backend/tests · backend/eval</td></tr>
-      <tr><td>Deployment</td><td>Dockerfile, docker-compose with persisted index</td><td class="mono">Dockerfile · docker-compose.yml</td></tr>
+      <tr><td>Testing & evaluation</td><td>pytest, golden-set eval, JUnit 5 integration tests, GitHub Actions CI</td><td class="mono">backend/tests · backend/eval</td></tr>
+      <tr><td>Deployment</td><td>Dockerfiles for all three services, one docker-compose</td><td class="mono">docker-compose.yml</td></tr>
     </table></div>
   </div>
 </section>
@@ -220,31 +236,43 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:14px}
     <div class="grid g2">
       <div>
         <h2>Run it locally</h2>
-        <p class="sub">No API keys needed. Switch to a real provider in <code>backend/.env</code>.</p>
-<pre># backend
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-uvicorn app.main:app --reload
+        <p class="sub">No API keys needed. Start any backend, then point the UI at it.</p>
+<pre># Python AI service  (:8000)
+cd backend && pip install -r requirements.txt
+cp .env.example .env && uvicorn app.main:app
 
-# frontend (second terminal)
-cd frontend && npm install && npm run dev
-# open http://localhost:5173</pre>
+# Spring Boot gateway (:8080, needs :8000)
+cd java-gateway && mvn spring-boot:run
+
+# Spring AI service   (:8081, standalone)
+cd java-spring-ai && mvn spring-boot:run
+
+# UI
+cd frontend && npm install
+BACKEND_URL=http://localhost:8081 npm run dev
+
+# or all of it
+docker compose up --build</pre>
       </div>
       <div>
-        <h2>Same pattern in Java</h2>
-        <p class="sub">With Spring AI, for teams whose services are Spring Boot.</p>
-<pre>String ask(String question) {
-  return chat.prompt()
-    .user(question)
-    .advisors(new QuestionAnswerAdvisor(store,
-        SearchRequest.builder()
-          .topK(4).similarityThreshold(0.5).build()))
-    .tools(new CostCalculatorTools())
-    .call()
-    .content();
-}</pre>
+        <h2>The Spring AI core</h2>
+        <p class="sub">Generation streams through ChatClient; the LLM can call plan math as a tool.</p>
+<pre>// grounded, streamed generation
+chat.prompt()
+    .messages(new SystemMessage(SYSTEM_PROMPT),
+              new UserMessage(contextAndQuestion))
+    .stream().content()
+    .doOnNext(listener::token)
+    .blockLast();
+
+// structured-output routing
+RouteDecision d = chat.prompt().user(q)
+    .call().entity(RouteDecision.class);
+
+// tool calling
+@Tool(description = "Estimate member cost")
+Estimate estimateVisitCost(String service,
+    double billedAmount, double deductibleRemaining)</pre>
       </div>
     </div>
   </div>

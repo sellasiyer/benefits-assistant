@@ -19,7 +19,9 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
       - name: Unit and API tests (offline, no API keys)
-        run: pytest -q
+        run: |
+          pytest -q | tee pytest.out
+          echo "::notice title=python tests::$(tail -1 pytest.out)"
       - name: RAG evaluation on the golden set
         run: python -m eval.run_eval
 
@@ -37,6 +39,12 @@ jobs:
           cache: maven
       - name: Build and test (JUnit, stub AI service)
         run: mvn -B -ntp verify
+      - name: Report test counts
+        if: always()
+        run: |
+          t=$(grep -ho '<testsuite[^>]* tests="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o 'tests="[0-9]*"' | grep -o '[0-9]*' | awk '{s+=$1} END{print s+0}')
+          f=$(grep -ho '<testsuite[^>]* failures="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o 'failures="[0-9]*"' | grep -o '[0-9]*' | awk '{s+=$1} END{print s+0}')
+          echo "::notice title=java-gateway tests::$t tests run, $f failures"
 
   java-spring-ai:
     runs-on: ubuntu-latest
@@ -52,6 +60,12 @@ jobs:
           cache: maven
       - name: Build and test (JUnit, offline models)
         run: mvn -B -ntp verify
+      - name: Report test counts
+        if: always()
+        run: |
+          t=$(grep -ho '<testsuite[^>]* tests="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o 'tests="[0-9]*"' | grep -o '[0-9]*' | awk '{s+=$1} END{print s+0}')
+          f=$(grep -ho '<testsuite[^>]* failures="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o 'failures="[0-9]*"' | grep -o '[0-9]*' | awk '{s+=$1} END{print s+0}')
+          echo "::notice title=java-spring-ai tests::$t tests run, $f failures"
       - name: Provider profiles resolve and compile (OpenAI, Azure OpenAI, Anthropic)
         run: |
           mvn -B -ntp -q -Popenai -DskipTests package

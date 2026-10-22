@@ -5,74 +5,109 @@
 
 ![Benefits Assistant UI](docs/assets/ui-chat.png)
 
-A small, complete app that exercises every item in a typical **AI/ML + Full Stack** job description:
+A health-plan chatbot that answers member questions from policy documents, with citations, built three ways
+behind **one API contract**:
+
+| Backend | Port | Stack | Folder |
+|---|---|---|---|
+| **Python AI service** | 8000 | FastAPI · LangChain · LangGraph · Chroma | `backend/` |
+| **Spring Boot gateway** | 8080 | Java 21 · Spring Boot · RestClient · Resilience4j → calls the Python service | `java-gateway/` |
+| **Spring AI service** | 8081 | Java 21 · Spring AI · ChatClient · VectorStore · `@Tool` (standalone) | `java-spring-ai/` |
+
+The **React + TypeScript** UI (`frontend/`) works with any of them unchanged.
 
 | JD requirement | Where it lives |
 |---|---|
 | REST APIs / microservices in Python (**FastAPI**) | `backend/app/main.py` |
-| **LangChain** (documents, splitters, prompts, tools, model abstraction) | `vectorstore.py`, `providers.py`, `agent.py` |
+| **Java / Spring Boot** microservices | `java-gateway/`, `java-spring-ai/` |
+| **LangChain** (documents, splitters, prompts, tools, model abstraction) | `backend/app/vectorstore.py`, `providers.py`, `agent.py` |
 | **LangGraph** (stateful agent, routing, tool use) | `backend/app/agent.py` |
-| LLMs from **OpenAI, Azure OpenAI, Anthropic, AWS Bedrock** | `backend/app/providers.py` (one env var) |
-| **RAG** with a **vector database** + **embedding models** | `vectorstore.py` (Chroma, HNSW, cosine) |
+| **Spring AI** (ChatClient, EmbeddingModel, VectorStore, `@Tool`, structured output) | `java-spring-ai/` |
+| LLMs from **OpenAI, Azure OpenAI, Anthropic, AWS Bedrock** | `backend/app/providers.py`, `java-spring-ai/pom.xml` profiles |
+| **RAG** with a **vector database** + **embedding models** | Chroma (Python), `SimpleVectorStore` (Java) |
+| Resilience, observability | Resilience4j retry + circuit breaker, request-id tracing, Actuator |
 | **React + TypeScript** UI, streaming | `frontend/src/App.tsx`, `frontend/src/api.ts` |
-| Testing / evaluation | `backend/tests/`, `backend/eval/` |
-| Deployment | `backend/Dockerfile`, `docker-compose.yml` |
+| Testing / evaluation | pytest + golden-set eval, JUnit 5 in both Java modules, GitHub Actions |
+| Deployment | Dockerfiles for all three, `docker-compose.yml` |
 
 Domain: a fictional health plan ("North Star Gold PPO"), so the questions are about copays,
 prior authorization, the formulary and appeals, with **HIPAA-style PHI redaction**.
 
-It runs **fully offline with no API keys** (deterministic stand-ins for the LLM and embeddings),
-and switches to a real provider by changing `.env`.
+Everything runs **fully offline with no API keys** (deterministic stand-ins for the LLM and embeddings),
+and switches to a real provider by configuration.
 
 ---
 
-## 1. Run it (about 3 minutes)
+## 1. Run it
 
-**Backend** (Python 3.11+)
+**Python AI service** (Python 3.11+)
 ```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000              # Swagger UI: http://localhost:8000/docs
 ```
-Open http://localhost:8000/docs for the auto-generated Swagger UI (FastAPI builds it from the Pydantic models).
 
-**Frontend** (Node 18+), in a second terminal
+**Spring Boot gateway** (Java 21, Maven), needs the Python service running
+```bash
+cd java-gateway
+mvn spring-boot:run                                    # http://localhost:8080
+```
+
+**Spring AI service** (Java 21, Maven), standalone
+```bash
+cd java-spring-ai
+mvn spring-boot:run                                    # http://localhost:8081
+```
+
+**Frontend** (Node 18+): pick a backend with `BACKEND_URL`
 ```bash
 cd frontend
 npm install
-npm run dev            # http://localhost:5173
+npm run dev                                            # Python (default, :8000)
+BACKEND_URL=http://localhost:8080 npm run dev          # through the Spring Boot gateway
+BACKEND_URL=http://localhost:8081 npm run dev          # Java Spring AI
 ```
+Open http://localhost:5173. The header badge shows which backend answered.
 
-**Tests and evaluation**
+**Everything at once:** `cp backend/.env.example backend/.env && docker compose up --build`
+
+**Tests**
 ```bash
-cd backend
-pytest -q                  # 12 tests: API, guardrails, tool, router, streaming
-python -m eval.run_eval    # golden-set eval: retrieval hit@k, answer correctness, grounding
+cd backend && pytest -q && python -m eval.run_eval     # 12 tests + golden-set eval
+cd java-gateway && mvn verify                          # 7 integration tests against a stub AI service
+cd java-spring-ai && mvn verify                        # 10 unit + 10 integration tests
 ```
 
-**Use a real LLM**: edit `backend/.env`, e.g.
-```
-LLM_PROVIDER=openai
-EMBEDDING_PROVIDER=openai
-OPENAI_API_KEY=sk-...
-```
-Changing the embedding provider changes the vector space, so delete `backend/data/chroma/` and restart (or `POST /ingest`).
+**Use a real LLM**
+- Python: edit `backend/.env` (`LLM_PROVIDER=openai`, `OPENAI_API_KEY=...`). Changing embeddings changes the
+  vector space, so delete `backend/data/chroma/` and restart.
+- Spring AI: `OPENAI_API_KEY=... mvn spring-boot:run -Popenai -Dspring-boot.run.profiles=openai`
+  (also `-Pazure`, `-Panthropic`).
 
 ---
 
 ## 2. Architecture
 
 ```
-React (Vite, TS) ──POST /api/chat/stream──► FastAPI ──► LangGraph agent
-   ▲   SSE: step / token / citations / done              │
-   └─────────────────────────────────────────────────────┘
-                                                         ▼
-     guard ─► router ─┬─► calculator (LangChain @tool) ─────────────► END
-       │              └─► retrieve (Chroma) ─► grade ─┬─► generate (LLM) ─► END
-       └─► blocked ─► END                             └─► no_answer ─► END
+                                ┌──────────────────────────────────────────────┐
+React (Vite, TS) ──/api/*──►    │ :8000  Python  FastAPI ─► LangGraph agent    │
+   ▲  SSE: step/token/          │          ▲                                   │
+   │  citations/done            │ :8080  Spring Boot gateway (Java) ──┘        │
+   │                            │          validation · retry · breaker · SSE  │
+   └────────────────────────    │ :8081  Spring AI (Java) ─► same agent steps  │
+                                └──────────────────────────────────────────────┘
+
+Agent steps (identical in Python and Spring AI):
+     guard ─► router ─┬─► calculator (tool) ─────────────────────────► answer
+       │              └─► retrieve (vector store) ─► grade ─┬─► generate (LLM) ─► answer
+       └─► blocked                                          └─► no_answer
 ```
+
+**Why two Java options?** The gateway is the common enterprise split: Java owns the public API, validation,
+resilience and audit; the AI layer is a separately deployed and scaled Python service. The Spring AI service
+shows the other choice: GenAI natively in a Spring Boot codebase, no Python at all.
 
 ---
 
@@ -182,33 +217,54 @@ token and cost metrics per request.
 
 ---
 
-## 5. Java/Spring equivalent (for a Java + AI role)
 
-The same pattern in Spring Boot with **Spring AI** (LangChain4j is the other common option):
+---
 
+## 5. Spring Boot gateway (`java-gateway/`)
+
+React → **Spring Boot :8080** → Python :8000. Same endpoints and JSON as the Python service.
+
+| File | What it shows |
+|---|---|
+| `Dtos.java` | The API contract as Java records, with Bean Validation (`@NotBlank`, `@Size`). Field names match the Pydantic models exactly. |
+| `AiServiceClient.java` | Spring `RestClient` with explicit connect/read timeouts. `@Retry` (3 attempts, exponential backoff, never retries 4xx) and `@CircuitBreaker` (fails fast with a 503 when the AI service is unhealthy). Streaming uses the JDK `HttpClient` to read the upstream SSE body line by line. |
+| `ChatController.java` | `/chat` proxies JSON. `/chat/stream` relays every SSE frame through an `SseEmitter` on a **virtual thread** (Java 21), so a slow LLM never ties up a servlet thread. `/health` aggregates the AI service's health. |
+| `RequestIdFilter.java` | One `X-Request-Id` per request: in the MDC (every log line), echoed to the caller, forwarded to Python. One id traces a request across both services. |
+| `ApiExceptionHandler.java` | Consistent JSON errors (`validation_failed`, `ai_service_unavailable`) with the request id, no stack traces. |
+| `application.yml` | Resilience4j settings, Actuator (`/actuator/health`, `/actuator/circuitbreakers`), virtual threads. |
+
+**Audit logging is PHI-safe:** the gateway logs request id, route and latency, never the question text.
+
+**Tests** (`GatewayIntegrationTest`): boots the real gateway against a stub AI service (a JDK `HttpServer`)
+and verifies the JSON contract, request-id propagation, validation before any upstream call, retry on
+transient 500s (3 calls, then success), a clean 503 after persistent failure, and in-order SSE relay.
+
+## 6. Spring AI service (`java-spring-ai/`)
+
+The whole agent in Java. Same endpoints, same behavior, same results as Python (the golden questions give
+identical answers, because the offline models use the same algorithms).
+
+| File | Spring AI concept |
+|---|---|
+| `AiConfig.java` | Beans for `ChatModel`, `EmbeddingModel`, `ChatClient` and `VectorStore`. Offline models by default; with `-Popenai` (or `-Pazure`, `-Panthropic`) the provider's Spring AI starter auto-configures the real models and nothing else changes. |
+| `OfflineChatModel.java` | Implements Spring AI's `ChatModel` (`call` and streaming `stream` returning `Flux<ChatResponse>`). This is also how you'd wrap an internal or self-hosted model. |
+| `HashingEmbeddingModel.java` | Implements `EmbeddingModel`. |
+| `KnowledgeBase.java` | RAG ingestion into `SimpleVectorStore` (swap for PgVector, Azure AI Search, OpenSearch in production) and `similaritySearch(SearchRequest)` with scores. Idempotent re-ingest. |
+| `CostTools.java` | A `@Tool` method with `@ToolParam` descriptions. With a real model, `chatClient.prompt().tools(costTools)` lets the LLM decide to call it; Spring AI runs the method and feeds the result back. |
+| `BenefitsAgent.java` | guard → router → calculator or retrieve → grade → generate. Routing with a real model uses **structured output**: `.call().entity(RouteDecision.class)`. Generation streams with `.stream().content()`. |
+| `core/` | Framework-free logic (guardrails, chunking, routing heuristic, cost math, embeddings) so it's unit-testable without Spring. |
+
+**Shortcut worth knowing:** for plain RAG, Spring AI's `QuestionAnswerAdvisor` does retrieve-and-stuff in
+one line:
 ```java
-@Service
-class BenefitsAssistant {
-    private final ChatClient chat;
-    private final VectorStore store;   // PgVectorStore, AzureVectorStore, ...
-
-    BenefitsAssistant(ChatClient.Builder builder, VectorStore store) {
-        this.store = store;
-        this.chat = builder
-            .defaultSystem("Answer only from the context. Cite [n]. Say you don't know otherwise.")
-            .build();
-    }
-
-    String ask(String question) {
-        return chat.prompt()
-            .user(question)
-            .advisors(new QuestionAnswerAdvisor(store,
-                SearchRequest.builder().topK(4).similarityThreshold(0.5).build()))
-            .tools(new CostCalculatorTools())     // @Tool-annotated methods
-            .call()
-            .content();
-    }
-}
+chatClient.prompt().user(question)
+    .advisors(new QuestionAnswerAdvisor(vectorStore,
+        SearchRequest.builder().topK(4).similarityThreshold(0.5).build()))
+    .call().content();
 ```
-Or keep the AI layer in Python and call `POST /chat` from Spring with `RestClient`. The JSON contract
-in `main.py` (`ChatRequest` / `ChatResponse`) is the interface between the two.
+This service does the steps explicitly instead, to get numbered citations and the "don't know" grader.
+
+**Tests:** `CoreTest` (10 plain unit tests) and `SpringAiIntegrationTest` (boots the app on a random port and
+runs the same scenarios as the Python suite: citations, "don't know", injection, PHI, tool route, streaming,
+validation, idempotent ingest). CI also checks that the OpenAI, Azure OpenAI and Anthropic profiles resolve
+and compile.
